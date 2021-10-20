@@ -1,0 +1,133 @@
+ZAD1 --------------------------------------------------
+
+DECLARE
+    vTekst CHAR(20) := 'Witaj, świecie';
+    vLiczba NUMBER(7,3) := 1000.456;
+BEGIN
+    DBMS_OUTPUT.PUT_LINE(vTekst);
+    DBMS_OUTPUT.PUT_LINE(vLiczba);
+END;
+
+ZAD2 --------------------------------------------------
+
+DECLARE
+    vTekst VARCHAR(50) := 'Witaj, świecie!';
+    vLiczba NUMBER(20,3) := 1000.456;
+BEGIN
+    vTekst := CONCAT(vTekst, ' Witaj, nowy dniu!');
+    vLiczba := vLiczba + POWER(10, 15);
+    DBMS_OUTPUT.PUT_LINE(vTekst);
+    DBMS_OUTPUT.PUT_LINE(vLiczba);
+END;
+
+ZAD3 --------------------------------------------------
+
+DECLARE
+    vZmienna1 NUMBER(5,2) := &first;
+    vZmienna2 NUMBER(5,2) := &second;
+    vWynik NUMBER(6,4);
+BEGIN
+    vWynik := vZmienna1 + vZmienna2;
+    DBMS_OUTPUT.PUT_LINE('Wynik dodawania: ' || vWynik);
+END;
+
+ZAD4 --------------------------------------------------
+
+DECLARE
+    cPI CONSTANT NUMBER(3,2) := 3.14;
+    vR NUMBER(5) := 5;
+    pole NUMBER(5,1);
+    obwod NUMBER(5,1);
+BEGIN
+    pole := cPi * POWER(vR, 2);
+    obwod := 2 * cPI * vR;
+    DBMS_OUTPUT.PUT_LINE('Obwód koła o promieniu równym 5: ' || obwod);
+    DBMS_OUTPUT.PUT_LINE('Pole koła o promieniu równym 5: ' || pole);
+END;
+
+ZAD5  ---------------------------------------------------------------------
+
+DECLARE
+    vNazwisko Pracownicy.nazwisko%TYPE;
+    vEtat Pracownicy.etat%TYPE;
+BEGIN
+    SELECT nazwisko, etat
+    INTO vNazwisko, vEtat
+    FROM Pracownicy
+    WHERE placa_pod = (SELECT MAX(placa_pod) FROM Pracownicy);
+    DBMS_OUTPUT.PUT_LINE('Najlepiej zarabia pracownik ' || vNazwisko);
+    DBMS_OUTPUT.PUT_LINE('Pracuje on jako ' || vEtat);
+END;
+
+ZAD6 ----------------------------------------------------------------------
+
+DECLARE
+    TYPE typRekord is RECORD (
+        nazwisko VARCHAR(50),
+        etat VARCHAR(20)
+    );
+    vPracownik typRekord;
+BEGIN
+    SELECT nazwisko, etat
+    INTO vPracownik.nazwisko, vPracownik.etat
+    FROM Pracownicy
+    WHERE placa_pod = (SELECT MAX(placa_pod) FROM Pracownicy);
+    DBMS_OUTPUT.PUT_LINE('Najlepiej zarabia pracownik ' || vPracownik.nazwisko);
+    DBMS_OUTPUT.PUT_LINE('Pracuje on jako ' || vPracownik.etat);
+END;
+
+
+ZAD7 --------------------------------------------------
+
+DECLARE
+    SUBTYPE tPieniadze IS NUMBER(7,2);
+    vPracownik tPieniadze;
+BEGIN
+    SELECT placa_pod * 12
+    INTO vPracownik
+    FROM Pracownicy
+    WHERE nazwisko = 'SLOWINSKI';
+    
+    DBMS_OUTPUT.PUT_LINE('Pracownik SLOWINSKI zarabia rocznie ' || vPracownik);
+END;
+
+
+ZAD 8 --------------------------------------------------
+
+DECLARE
+actualDate date;
+BEGIN
+<<znacznik>>
+SELECT SYSDATE() 
+INTO actualDate 
+FROM DUAL;
+IF to_char(actualDate, 'ss') = 25 then
+DBMS_OUTPUT.PUT_LINE('NADESZŁA 25 SEKUNDA!');
+ELSE GOTO znacznik;
+END IF;
+END;
+
+ZAD 9 --------------------------------------------------\
+
+DECLARE
+    vLiczba NUMBER(5) := &liczba;
+    vSilnia NUMBER(37) := 1;
+    vKopia NUMBER(5);
+BEGIN
+    vKopia := vLiczba;
+    
+    LOOP
+        IF vLiczba = 0 THEN
+            EXIT;
+        END IF;
+        
+        vSilnia := vSilnia * vLiczba;
+        vLiczba := vLiczba - 1;
+    END LOOP;
+    
+    DBMS_OUTPUT.PUT_LINE('Silnia dla n=' || vKopia || ': ' || vSilnia);
+END;
+
+ZAD 10
+
+

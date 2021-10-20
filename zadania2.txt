@@ -1,0 +1,194 @@
+-- Zadanie 1
+CREATE OR REPLACE PROCEDURE NowyPracownik (
+  pNazwisko IN VARCHAR,
+  pZespol IN VARCHAR,
+  pSzef IN VARCHAR,
+  pPlacaPodstawowa IN NUMBER,
+  pDataZatrudnienia IN DATE DEFAULT CURRENT_DATE,
+  pEtat IN VARCHAR DEFAULT 'STAZYSTA'
+) IS
+    vIdZespolu Zespoly.ID_ZESP%TYPE;
+    vIdSzefa Pracownicy.ID_PRAC%TYPE;
+    vNoweId Pracownicy.ID_PRAC%TYPE;
+BEGIN
+    SELECT ID_ZESP
+    INTO vIdZespolu
+    FROM Zespoly
+    WHERE Zespoly.NAZWA = pZespol;
+
+    SELECT ID_PRAC
+    INTO vIdSzefa
+    FROM Pracownicy
+    WHERE Pracownicy.NAZWISKO = pSzef;
+    
+    SELECT MAX(ID_PRAC) + 1
+    INTO vNoweId
+    FROM Pracownicy;
+    
+    INSERT INTO PRACOWNICY (ID_PRAC, NAZWISKO, ETAT, ID_SZEFA, PLACA_POD, ID_ZESP, ZATRUDNIONY)
+    VALUES (vNoweId, pNazwisko, pEtat, vIdSzefa, pPlacaPodstawowa, vIdZespolu, pDataZatrudnienia);
+END;
+
+-- Zadanie 2
+CREATE FUNCTION PlacaNetto (
+    pPlacaBrutto IN NUMBER,
+    pPodatek IN NUMBER DEFAULT 20
+) RETURN NUMBER
+IS
+BEGIN
+    RETURN pPlacaBrutto * (1 - pPodatek / 100);
+END;
+
+-- Zadanie 3
+CREATE FUNCTION Silnia (
+    pN IN NUMBER
+) RETURN NUMBER
+IS
+     vWynik NUMBER := 1;
+BEGIN
+    FOR vI IN 1..pN LOOP
+        vWynik := vWynik * vI;
+    END LOOP;
+    RETURN vWynik;
+END;
+
+-- Zadanie 4
+CREATE FUNCTION SilniaRek (
+    pN IN NUMBER
+) RETURN NUMBER
+IS
+BEGIN
+    IF pN = 0 THEN
+        RETURN 1;
+    ELSE
+        RETURN pN * SilniaRek(pN - 1);
+    END IF;
+END;
+
+-- Zadanie 5
+CREATE OR REPLACE FUNCTION IleLat (
+    pData DATE
+) RETURN NUMBER
+IS
+BEGIN
+    RETURN EXTRACT(year FROM CURRENT_DATE) - EXTRACT(year FROM pData);
+END;
+
+-- Zadanie 6
+
+CREATE OR REPLACE PACKAGE Konwersja IS
+    FUNCTION Cels_To_Fahr(pCels NUMBER) RETURN NUMBER;
+    FUNCTION Fahr_To_Cels(pFahr NUMBER) RETURN NUMBER;
+END;
+    
+CREATE OR REPLACE PACKAGE BODY Konwersja IS
+    FUNCTION Cels_To_Fahr(pCels NUMBER) RETURN NUMBER IS
+    BEGIN
+        RETURN pCels * 1.8 + 32;
+    END;
+    
+    FUNCTION Fahr_To_Cels(pFahr NUMBER) RETURN NUMBER IS
+    BEGIN
+        RETURN (pFahr - 32) / 1.8;
+    END;
+END;
+
+-- Zadanie 7
+
+CREATE OR REPLACE PACKAGE Zmienne IS
+    vLicznik NUMBER DEFAULT 0;
+
+    PROCEDURE ZwiekszLicznik;
+    PROCEDURE ZmniejszLicznik;
+    FUNCTION PokazLicznik RETURN NUMBER;
+END;
+
+CREATE OR REPLACE PACKAGE BODY Zmienne IS
+    PROCEDURE ZwiekszLicznik IS
+    BEGIN
+        vLicznik := vLicznik + 1;
+        DBMS_OUTPUT.PUT_LINE('Zwiększono');
+    END;
+    
+    PROCEDURE ZmniejszLicznik IS
+    BEGIN
+        vLicznik := vLicznik - 1;
+        DBMS_OUTPUT.PUT_LINE('Zmniejszono');
+    END;
+    
+    FUNCTION PokazLicznik RETURN NUMBER IS
+    BEGIN
+        RETURN vLicznik;
+    END;
+BEGIN
+    vLicznik := 1;
+END;
+
+-- Zadanie 8
+CREATE OR REPLACE PACKAGE IntZespoly IS
+    PROCEDURE Dodaj(pIdZespolu Zespoly.ID_ZESP%TYPE, pNazwa Zespoly.Nazwa%TYPE, pAdres Zespoly.Adres%TYPE);
+    PROCEDURE UsunPoId(pIdZespolu Zespoly.ID_ZESP%TYPE);
+    PROCEDURE UsunPoNazwie(pNazwa Zespoly.Nazwa%TYPE);
+    PROCEDURE Modyfikuj(pIdZespolu Zespoly.ID_ZESP%TYPE, pNazwa Zespoly.Nazwa%TYPE, pAdres Zespoly.Adres%TYPE);
+    
+    FUNCTION pobierzIdPoNazwie(pNazwa Zespoly.Nazwa%TYPE) RETURN Zespoly.ID_ZESP%TYPE;
+    FUNCTION pobierzNazwePoId(pIdZespolu Zespoly.ID_ZESP%TYPE) RETURN Zespoly.Nazwa%TYPE;
+    FUNCTION pobierzAdresPoId(pIdZespolu Zespoly.ID_ZESP%TYPE) RETURN Zespoly.Nazwa%TYPE;
+END;
+
+CREATE OR REPLACE PACKAGE BODY IntZespoly IS
+    PROCEDURE Dodaj(pIdZespolu Zespoly.ID_ZESP%TYPE, pNazwa Zespoly.Nazwa%TYPE, pAdres Zespoly.Adres%TYPE) IS
+    BEGIN
+        INSERT INTO Zespoly (Id_Zesp, Nazwa, Adres)
+        VALUES (pIdZespolu, pNazwa, pAdres);
+    END;
+    
+    PROCEDURE UsunPoId(pIdZespolu Zespoly.ID_ZESP%TYPE) IS
+    BEGIN
+        DELETE FROM Zespoly WHERE Id_Zesp = pIdZespolu;
+    END;
+    
+    PROCEDURE UsunPoNazwie(pNazwa Zespoly.Nazwa%TYPE) IS
+    BEGIN
+        DELETE FROM Zespoly WHERE Nazwa = pNazwa;
+    END;
+    
+    PROCEDURE Modyfikuj(pIdZespolu Zespoly.ID_ZESP%TYPE, pNazwa Zespoly.Nazwa%TYPE, pAdres Zespoly.Adres%TYPE) IS
+    BEGIN
+        UPDATE Zespoly
+        SET Nazwa = pNazwa, Adres = pAdres
+        WHERE Id_Zesp = pIdZespolu;
+    END;
+    
+    FUNCTION pobierzIdPoNazwie(pNazwa Zespoly.Nazwa%TYPE) RETURN Zespoly.ID_ZESP%TYPE IS
+        vId Zespoly.ID_ZESP%TYPE;
+    BEGIN
+        SELECT Id_Zesp
+        INTO vId
+        FROM Zespoly
+        WHERE Nazwa = pNazwa;
+        RETURN vId;
+    END;
+    
+    FUNCTION pobierzNazwePoId(pIdZespolu Zespoly.ID_ZESP%TYPE) RETURN Zespoly.Nazwa%TYPE IS
+        vNazwa Zespoly.Nazwa%TYPE;
+    BEGIN
+        SELECT Nazwa
+        INTO vNazwa
+        FROM Zespoly
+        WHERE Id_Zesp = pIdZespolu;
+        
+        RETURN vNazwa;
+    END;
+    
+    FUNCTION pobierzAdresPoId(pIdZespolu Zespoly.ID_ZESP%TYPE) RETURN Zespoly.Nazwa%TYPE IS
+        vAdres Zespoly.Nazwa%TYPE;
+    BEGIN
+        SELECT Adres
+        INTO vAdres
+        FROM Zespoly
+        WHERE Id_Zesp = pIdZespolu;
+        
+        RETURN vAdres;
+    END;
+END;
