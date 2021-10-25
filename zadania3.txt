@@ -1,0 +1,322 @@
+-- Zadanie 1
+
+DECLARE
+
+    CURSOR cAsystenci IS
+
+        SELECT Nazwisko, Zatrudniony
+
+        FROM Pracownicy
+
+        WHERE ETAT='ASYSTENT';
+
+    
+
+    vNazwisko Pracownicy.Nazwisko%TYPE;
+
+    vZatrudniony Pracownicy.Nazwisko%TYPE;
+
+BEGIN
+
+    OPEN cAsystenci;
+
+    LOOP
+
+        FETCH cAsystenci INTO vNazwisko, vZatrudniony;
+
+        EXIT WHEN cAsystenci%NOTFOUND;
+
+        DBMS_OUTPUT.PUT_LINE(vNazwisko || ' pracuje od ' || vZatrudniony);
+
+    END LOOP;
+
+    CLOSE cAsystenci;
+
+END;
+
+-- Zadanie 2
+
+DECLARE
+
+    CURSOR cPracownicy IS
+
+        SELECT Nazwisko
+
+        FROM Pracownicy
+
+        ORDER BY Placa_Pod DESC;
+
+    
+
+    vNazwisko Pracownicy.Nazwisko%TYPE;
+
+BEGIN
+
+    OPEN cPracownicy;
+
+    LOOP
+
+        FETCH cPracownicy INTO vNazwisko;
+
+        EXIT WHEN cPracownicy%NOTFOUND OR cPracownicy%ROWCOUNT = 4;
+
+        DBMS_OUTPUT.PUT_LINE(cPracownicy%ROWCOUNT || ': ' || vNazwisko);
+
+    END LOOP;
+
+    CLOSE cPracownicy;
+
+END;
+
+
+
+-- Zadanie 3
+
+-- Kod wykonujący operację
+
+DECLARE
+
+    CURSOR cZatrudnieniWPoniedzialek IS
+
+        SELECT Nazwisko, Placa_Pod
+
+        FROM Pracownicy
+
+        WHERE to_char(Zatrudniony, 'D') = 1
+
+        FOR UPDATE;
+
+BEGIN
+
+    FOR vPracownik IN cZatrudnieniWPoniedzialek LOOP
+
+        UPDATE Pracownicy
+
+        SET Placa_Pod = Placa_Pod * 1.2
+
+        WHERE CURRENT OF cZatrudnieniWPoniedzialek;
+
+    END LOOP;
+
+END;
+
+-- Kod sprawdzający operację
+
+SELECT Nazwisko, Placa_Pod
+
+    FROM Pracownicy
+
+    WHERE to_char(Zatrudniony, 'D') = 1;
+
+
+-- Zadanie 4
+
+DECLARE
+    CURSOR cKursor(pNazwa Zespoly.Nazwa%TYPE) IS
+        SELECT * FROM Pracownicy
+        INNER JOIN Zespoly ON Pracownicy.Id_Zesp = Zespoly.Id_Zesp
+        WHERE Zespoly.Nazwa = pNazwa
+        FOR UPDATE
+    ;
+BEGIN
+    FOR vPracownik IN cKursor('ALGORYTMY') LOOP
+        UPDATE Pracownicy
+        SET Placa_Dod = Placa_Dod + 100
+        WHERE CURRENT OF cKursor;
+    END LOOP;
+   
+    FOR vPracownik IN cKursor('ADMINISTRACJA') LOOP
+        UPDATE Pracownicy
+        SET Placa_Dod = Placa_Dod + 150
+        WHERE CURRENT OF cKursor;
+    END LOOP;
+   
+    FOR vZespol IN (SELECT * FROM Zespoly WHERE Nazwa NOT IN ('ALGORYTMY', 'ADMINISTRACJA')) LOOP
+        FOR vPracownik IN cKursor(vZespol.Nazwa) LOOP
+            IF vPracownik.Etat = 'STAZYSTA' THEN
+                DELETE FROM Pracownicy
+                WHERE CURRENT OF cKursor;
+            END IF;
+        END LOOP;
+    END LOOP;
+END;
+
+
+-- Zadanie 5
+
+CREATE PROCEDURE PokazPracownikowEtatu(pNazwaEtatu Pracownicy.Etat%TYPE) IS
+    CURSOR cKursor (pcNazwaEtatu Pracownicy.Etat%TYPE) IS
+        SELECT * FROM Pracownicy
+        WHERE Etat = pcNazwaEtatu
+    ;
+BEGIN
+    FOR vPracownik IN cKursor(pNazwaEtatu) LOOP
+        DBMS_OUTPUT.PUT_LINE(vPracownik.Nazwisko);
+    END LOOP;
+END;
+
+-- Sprawdzenie
+
+BEGIN
+    PokazPracownikowEtatu('PROFESOR');
+END;
+
+
+-- Zadanie 6
+CREATE OR REPLACE PROCEDURE RaportKadrowy IS
+    CURSOR cEtaty IS
+        SELECT DISTINCT Etat FROM Pracownicy
+    ;
+
+    CURSOR cPracownicyNaEtacie (pcNazwaEtatu Pracownicy.Etat%TYPE) IS
+        SELECT * FROM Pracownicy
+        WHERE Etat = pcNazwaEtatu
+    ;
+   
+    vLicznik NUMBER := 0;
+    vSumaPlac NUMBER := 0;
+BEGIN
+    FOR vEtat IN cEtaty LOOP
+        DBMS_OUTPUT.PUT_LINE('Etat: ' || vEtat.Etat);
+        DBMS_OUTPUT.PUT_LINE('------------------------------');
+       
+        vLicznik := 0;
+        vSumaPlac := 0;
+        FOR vPracownik in cPracownicyNaEtacie(vEtat.Etat) LOOP
+            DBMS_OUTPUT.PUT_LINE(
+                vPracownik.Id_Prac || '. ' ||
+                vPracownik.Nazwisko || ', pensja: ' ||
+                (vPracownik.Placa_Pod + COALESCE(vPracownik.Placa_Dod, 0))
+            );
+           
+            vLicznik := vLicznik + 1;
+            vSumaPlac := vSumaPLac + vPracownik.Placa_Pod + COALESCE(vPracownik.Placa_Dod, 0);
+        END LOOP;
+       
+        DBMS_OUTPUT.PUT_LINE('Liczba pracowników: ' || vLicznik);
+        DBMS_OUTPUT.PUT_LINE('Średnia paca na etacie: ' || (vSumaPlac / vLicznik));
+        DBMS_OUTPUT.PUT_LINE('');
+    END LOOP;
+END;
+
+-- Zadanie 7 i zadanie 8 (razem)
+create or replace PACKAGE IntZespoly IS
+    PROCEDURE Dodaj(pIdZespolu Zespoly.ID_ZESP%TYPE, pNazwa Zespoly.Nazwa%TYPE, pAdres Zespoly.Adres%TYPE);
+    PROCEDURE UsunPoId(pIdZespolu Zespoly.ID_ZESP%TYPE);
+    PROCEDURE UsunPoNazwie(pNazwa Zespoly.Nazwa%TYPE);
+    PROCEDURE Modyfikuj(pIdZespolu Zespoly.ID_ZESP%TYPE, pNazwa Zespoly.Nazwa%TYPE, pAdres Zespoly.Adres%TYPE);
+
+    FUNCTION pobierzIdPoNazwie(pNazwa Zespoly.Nazwa%TYPE) RETURN Zespoly.ID_ZESP%TYPE;
+    FUNCTION pobierzNazwePoId(pIdZespolu Zespoly.ID_ZESP%TYPE) RETURN Zespoly.Nazwa%TYPE;
+    FUNCTION pobierzAdresPoId(pIdZespolu Zespoly.ID_ZESP%TYPE) RETURN Zespoly.Nazwa%TYPE;
+   
+    exZespolNieIstnieje EXCEPTION;
+    exIdentyfikatorNieIstnieje EXCEPTION;
+    exIdentyfikatorZdublowany EXCEPTION;
+END;
+
+create or replace PACKAGE BODY IntZespoly IS
+    PROCEDURE Dodaj(pIdZespolu Zespoly.ID_ZESP%TYPE, pNazwa Zespoly.Nazwa%TYPE, pAdres Zespoly.Adres%TYPE) IS
+    BEGIN
+        IF EXISTS(SELECT * FROM Zespoly WHERE Id_Zesp = pIdZespolu) THEN
+            RAISE exIdentyfikatorZdublowany;
+        END IF;
+   
+        INSERT INTO Zespoly (Id_Zesp, Nazwa, Adres)
+        VALUES (pIdZespolu, pNazwa, pAdres);
+       
+        IF NOT SQL%FOUND THEN
+            DBMS_OUTPUT.PUT_LINE('Nie dodano żadnego rekordu');
+        END IF;
+    END;
+
+    PROCEDURE UsunPoId(pIdZespolu Zespoly.ID_ZESP%TYPE) IS
+    BEGIN
+        IF NOT EXISTS(SELECT * FROM Zespoly WHERE Id_Zesp = pIdZespolu) THEN
+            RAISE exIdentyfikatorNieIstnieje;
+        END IF;
+   
+        DELETE FROM Zespoly WHERE Id_Zesp = pIdZespolu;
+       
+        IF NOT SQL%FOUND THEN
+            DBMS_OUTPUT.PUT_LINE('Nie usunięto żadnego rekordu');
+        END IF;
+    END;
+
+    PROCEDURE UsunPoNazwie(pNazwa Zespoly.Nazwa%TYPE) IS
+    BEGIN
+        IF NOT EXISTS(SELECT * FROM Zespoly WHERE Nazwa = pNazwa) THEN
+            RAISE exZespolNieIstnieje;
+        END IF;
+   
+        DELETE FROM Zespoly WHERE Nazwa = pNazwa;
+       
+        IF NOT SQL%FOUND THEN
+            DBMS_OUTPUT.PUT_LINE('Nie usunięto żadnego rekordu');
+        END IF;
+    END;
+
+    PROCEDURE Modyfikuj(pIdZespolu Zespoly.ID_ZESP%TYPE, pNazwa Zespoly.Nazwa%TYPE, pAdres Zespoly.Adres%TYPE) IS
+    BEGIN
+        IF NOT EXISTS(SELECT * FROM Zespoly WHERE Nazwa = pNazwa) THEN
+            RAISE exZespolNieIstnieje;
+        END IF;
+       
+        IF NOT EXISTS(SELECT * FROM Zespoly WHERE Id_Zesp = pIdZespolu) THEN
+            RAISE exIdentyfikatorNieIstnieje;
+        END IF;
+   
+        UPDATE Zespoly
+        SET Nazwa = pNazwa, Adres = pAdres
+        WHERE Id_Zesp = pIdZespolu;
+       
+        IF NOT SQL%FOUND THEN
+            DBMS_OUTPUT.PUT_LINE('Nie zmodyfikowano żadnego rekordu');
+        END IF;
+    END;
+
+    FUNCTION pobierzIdPoNazwie(pNazwa Zespoly.Nazwa%TYPE) RETURN Zespoly.ID_ZESP%TYPE IS
+        vId Zespoly.ID_ZESP%TYPE;
+    BEGIN
+        IF NOT EXISTS(SELECT * FROM Zespoly WHERE Nazwa = pNazwa) THEN
+            RAISE exZespolNieIstnieje;
+        END IF;
+   
+        SELECT Id_Zesp
+        INTO vId
+        FROM Zespoly
+        WHERE Nazwa = pNazwa;
+        RETURN vId;
+    END;
+
+    FUNCTION pobierzNazwePoId(pIdZespolu Zespoly.ID_ZESP%TYPE) RETURN Zespoly.Nazwa%TYPE IS
+        vNazwa Zespoly.Nazwa%TYPE;
+    BEGIN
+        IF NOT EXISTS(SELECT * FROM Zespoly WHERE Id_Zesp = pIdZespolu) THEN
+            RAISE exIdentyfikatorNieIstnieje;
+        END IF;
+   
+        SELECT Nazwa
+        INTO vNazwa
+        FROM Zespoly
+        WHERE Id_Zesp = pIdZespolu;
+
+        RETURN vNazwa;
+    END;
+
+    FUNCTION pobierzAdresPoId(pIdZespolu Zespoly.ID_ZESP%TYPE) RETURN Zespoly.Nazwa%TYPE IS
+        vAdres Zespoly.Nazwa%TYPE;
+    BEGIN
+        IF NOT EXISTS(SELECT * FROM Zespoly WHERE Id_Zesp = pIdZespolu) THEN
+            RAISE exIdentyfikatorNieIstnieje;
+        END IF;
+   
+        SELECT Adres
+        INTO vAdres
+        FROM Zespoly
+        WHERE Id_Zesp = pIdZespolu;
+
+        RETURN vAdres;
+    END;
+END;
+
